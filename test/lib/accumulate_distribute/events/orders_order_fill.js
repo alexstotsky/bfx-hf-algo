@@ -38,9 +38,46 @@ describe('accumulate_distribute:events:orders_order_fill', () => {
     o.amount = 40
     assert.strictEqual(o.getLastFillAmount(), 2, 'sanity check failed')
 
-    const i = getInstance({})
+    const i = getInstance({
+      stateParams: { remainingAmount: 0 }
+    })
     await ordersOrderFill(i, o)
     assert.strictEqual(o.getLastFillAmount(), 0, 'order fill amount not reset')
+  })
+
+  it('updates remaining amount w/ fill amount, floats', (done) => {
+    const filledOrderFloat = {
+      resetFilledAmount: () => {},
+      getLastFillAmount: () => {
+        return 0.2
+      }
+    }
+
+    const instance = getInstance({
+      stateParams: { remainingAmount: 0.3 }
+    })
+
+    ordersOrderFill({
+      ...instance,
+      state: {
+        ...instance.state
+      },
+
+      h: {
+        ...instance.h,
+
+        updateState: (inst, update) => {
+          return new Promise((resolve) => {
+            assert.deepStrictEqual(update, {
+              currentOrder: 1,
+              ordersBehind: 0,
+              remainingAmount: 0.1
+            })
+            resolve()
+          }).then(done).catch(done)
+        }
+      }
+    }, filledOrderFloat)
   })
 
   it('updates state with the new remaining amount & timeline position', async () => {
